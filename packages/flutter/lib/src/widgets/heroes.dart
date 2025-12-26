@@ -477,11 +477,11 @@ class _HeroFlightManifest {
       case HeroFlightDirection.push:
         parent = toRoute.animation!;
         curve = toHero.widget.curve;
-        reverseCurve = (toHero.widget.reverseCurve ?? curve).flipped;
+        reverseCurve = toHero.widget.reverseCurve ?? curve;
       case HeroFlightDirection.pop:
         parent = fromRoute.animation!;
         curve = fromHero.widget.curve;
-        reverseCurve = (fromHero.widget.reverseCurve ?? curve).flipped;
+        reverseCurve = fromHero.widget.reverseCurve ?? curve;
     }
 
     return _animation ??= CurvedAnimation(
@@ -611,8 +611,15 @@ class _HeroFlight {
       // fromHero hidden. If [AnimationStatus.dismissed], the animation is
       // triggered but canceled before it finishes. In this case, we keep toHero
       // hidden instead.
-      manifest.fromHero.endFlight(keepPlaceholder: status.isCompleted);
-      manifest.toHero.endFlight(keepPlaceholder: status.isDismissed);
+      switch (manifest.type) {
+        case HeroFlightDirection.push:
+          manifest.fromHero.endFlight(keepPlaceholder: status.isCompleted);
+          manifest.toHero.endFlight(keepPlaceholder: status.isDismissed);
+        case HeroFlightDirection.pop:
+          manifest.fromHero.endFlight(keepPlaceholder: status.isDismissed);
+          manifest.toHero.endFlight(keepPlaceholder: status.isCompleted);
+      }
+
       onFlightEnded(this);
       _proxyAnimation.removeListener(onTick);
     }
@@ -680,15 +687,32 @@ class _HeroFlight {
       // If the new origin of toHero is available and also paintable, try to
       // update heroRectTween with it.
       if (toHeroOrigin != heroRectTween.end!.topLeft) {
-        final Rect heroRectEnd = toHeroOrigin & heroRectTween.end!.size;
-        heroRectTween = manifest.createHeroRectTween(begin: heroRectTween.begin, end: heroRectEnd);
+        switch (manifest.type) {
+          case HeroFlightDirection.push:
+            final Rect heroRectEnd = toHeroOrigin & heroRectTween.end!.size;
+            heroRectTween = manifest.createHeroRectTween(
+              begin: heroRectTween.begin,
+              end: heroRectEnd,
+            );
+          case HeroFlightDirection.pop:
+            final Rect heroRectBegin = toHeroOrigin & heroRectTween.begin!.size;
+            heroRectTween = manifest.createHeroRectTween(
+              begin: heroRectBegin,
+              end: heroRectTween.end,
+            );
+        }
       }
     } else if (_heroOpacity.isCompleted) {
       // The toHero no longer exists or it's no longer the flight's destination.
       // Continue flying while fading out.
-      _heroOpacity = _proxyAnimation.drive(
-        _reverseTween.chain(CurveTween(curve: Interval(_proxyAnimation.value, 1.0))),
-      );
+      _heroOpacity = _proxyAnimation.drive(switch (manifest.type) {
+        HeroFlightDirection.push => _reverseTween.chain(
+          CurveTween(curve: Interval(_proxyAnimation.value, 1.0)),
+        ),
+        HeroFlightDirection.pop => _reverseTween.chain(
+          CurveTween(curve: Interval(0.0, _proxyAnimation.value)),
+        ),
+      });
     }
     // Update _aborted for the next animation tick.
     _aborted = toHeroOrigin == null || !toHeroOrigin.isFinite;
@@ -715,19 +739,26 @@ class _HeroFlight {
     manifest = initialManifest;
 
     final bool shouldIncludeChildInPlaceholder;
+    _proxyAnimation.parent = manifest.animation;
     switch (manifest.type) {
       case HeroFlightDirection.pop:
-        _proxyAnimation.parent = ReverseAnimation(manifest.animation);
         shouldIncludeChildInPlaceholder = false;
       case HeroFlightDirection.push:
-        _proxyAnimation.parent = manifest.animation;
         shouldIncludeChildInPlaceholder = true;
     }
 
-    heroRectTween = manifest.createHeroRectTween(
-      begin: manifest.fromHeroLocation,
-      end: manifest.toHeroLocation,
-    );
+    switch (manifest.type) {
+      case HeroFlightDirection.push:
+        heroRectTween = manifest.createHeroRectTween(
+          begin: manifest.fromHeroLocation,
+          end: manifest.toHeroLocation,
+        );
+      case HeroFlightDirection.pop:
+        heroRectTween = manifest.createHeroRectTween(
+          begin: manifest.toHeroLocation,
+          end: manifest.fromHeroLocation,
+        );
+    }
     manifest.fromHero.startFlight(
       shouldIncludedChildInPlaceholder: shouldIncludeChildInPlaceholder,
     );
@@ -753,8 +784,7 @@ class _HeroFlight {
       // That's because tweens like MaterialRectArcTween may create a different
       // path for swapped begin and end parameters. We want the pop flight
       // path to be the same (in reverse) as the push flight path.
-      _proxyAnimation.parent = ReverseAnimation(newManifest.animation);
-      heroRectTween = ReverseTween<Rect?>(heroRectTween);
+      _proxyAnimation.parent = newManifest.animation;
     } else if (manifest.type == HeroFlightDirection.pop &&
         newManifest.type == HeroFlightDirection.push) {
       // A pop flight was interrupted by a push.
@@ -792,12 +822,7 @@ class _HeroFlight {
       );
       shuttle = null;
 
-      if (newManifest.type == HeroFlightDirection.pop) {
-        _proxyAnimation.parent = ReverseAnimation(newManifest.animation);
-      } else {
-        _proxyAnimation.parent = newManifest.animation;
-      }
-
+      _proxyAnimation.parent = newManifest.animation;
       manifest.fromHero.endFlight(keepPlaceholder: true);
       manifest.toHero.endFlight(keepPlaceholder: true);
 
@@ -892,7 +917,7 @@ class HeroController extends NavigatorObserver {
     bool isInvalidFlight(_HeroFlight flight) {
       return flight.manifest.isUserGestureTransition &&
           flight.manifest.type == HeroFlightDirection.pop &&
-          flight._proxyAnimation.isDismissed;
+          flight._proxyAnimation.isCompleted;
     }
 
     final List<_HeroFlight> invalidFlights = _flights.values

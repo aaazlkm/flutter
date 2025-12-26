@@ -1706,7 +1706,7 @@ Future<void> main() async {
     const epsilon = 0.001;
     final Duration duration = observer.transitionDuration;
     const Curve curve = Curves.fastOutSlowIn;
-    final pushCenterTween = MaterialPointArcTween(
+    final centerTween = MaterialPointArcTween(
       begin: const Offset(50.0, 50.0),
       end: const Offset(400.0, 300.0),
     );
@@ -1722,17 +1722,17 @@ Future<void> main() async {
 
     await tester.pump(duration * 0.25);
     Offset actualHeroCenter = tester.getCenter(find.byKey(secondKey));
-    Offset predictedHeroCenter = pushCenterTween.lerp(curve.transform(0.25));
+    Offset predictedHeroCenter = centerTween.lerp(curve.transform(0.25));
     expect(actualHeroCenter, within<Offset>(distance: epsilon, from: predictedHeroCenter));
 
     await tester.pump(duration * 0.25);
     actualHeroCenter = tester.getCenter(find.byKey(secondKey));
-    predictedHeroCenter = pushCenterTween.lerp(curve.transform(0.5));
+    predictedHeroCenter = centerTween.lerp(curve.transform(0.5));
     expect(actualHeroCenter, within<Offset>(distance: epsilon, from: predictedHeroCenter));
 
     await tester.pump(duration * 0.25);
     actualHeroCenter = tester.getCenter(find.byKey(secondKey));
-    predictedHeroCenter = pushCenterTween.lerp(curve.transform(0.75));
+    predictedHeroCenter = centerTween.lerp(curve.transform(0.75));
     expect(actualHeroCenter, within<Offset>(distance: epsilon, from: predictedHeroCenter));
 
     await tester.pumpAndSettle();
@@ -1744,26 +1744,22 @@ Future<void> main() async {
     await tester.tap(find.text('pop'));
     await tester.pump(); // begin navigation
 
-    final popCenterTween = MaterialPointArcTween(
-      begin: const Offset(400.0, 300.0),
-      end: const Offset(50.0, 50.0),
-    );
     await tester.pump();
     expect(tester.getCenter(find.byKey(firstKey)), const Offset(400.0, 300.0));
 
     await tester.pump(duration * 0.25);
     actualHeroCenter = tester.getCenter(find.byKey(firstKey));
-    predictedHeroCenter = popCenterTween.lerp(curve.transform(0.25));
+    predictedHeroCenter = centerTween.lerp(curve.transform(0.75));
     expect(actualHeroCenter, within<Offset>(distance: epsilon, from: predictedHeroCenter));
 
     await tester.pump(duration * 0.25);
     actualHeroCenter = tester.getCenter(find.byKey(firstKey));
-    predictedHeroCenter = popCenterTween.lerp(curve.transform(0.5));
+    predictedHeroCenter = centerTween.lerp(curve.transform(0.5));
     expect(actualHeroCenter, within<Offset>(distance: epsilon, from: predictedHeroCenter));
 
     await tester.pump(duration * 0.25);
     actualHeroCenter = tester.getCenter(find.byKey(firstKey));
-    predictedHeroCenter = popCenterTween.lerp(curve.transform(0.75));
+    predictedHeroCenter = centerTween.lerp(curve.transform(0.25));
     expect(actualHeroCenter, within<Offset>(distance: epsilon, from: predictedHeroCenter));
 
     await tester.pumpAndSettle();
@@ -1838,7 +1834,7 @@ Future<void> main() async {
     const epsilon = 0.001;
     final Duration duration = observer.transitionDuration;
     const Curve curve = Curves.fastOutSlowIn;
-    final pushRectTween = RectTween(
+    final rectTween = RectTween(
       begin: const Rect.fromLTWH(leftPadding, 0.0, 100.0, 100.0),
       end: const Rect.fromLTWH(350.0 + leftPadding / 2, 200.0, 100.0, 200.0),
     );
@@ -1854,17 +1850,17 @@ Future<void> main() async {
 
     await tester.pump(duration * 0.25);
     Rect actualHeroRect = tester.getRect(find.byKey(secondKey));
-    Rect predictedHeroRect = pushRectTween.lerp(curve.transform(0.25))!;
+    Rect predictedHeroRect = rectTween.lerp(curve.transform(0.25))!;
     expect(actualHeroRect, within<Rect>(distance: epsilon, from: predictedHeroRect));
 
     await tester.pump(duration * 0.25);
     actualHeroRect = tester.getRect(find.byKey(secondKey));
-    predictedHeroRect = pushRectTween.lerp(curve.transform(0.5))!;
+    predictedHeroRect = rectTween.lerp(curve.transform(0.5))!;
     expect(actualHeroRect, within<Rect>(distance: epsilon, from: predictedHeroRect));
 
     await tester.pump(duration * 0.25);
     actualHeroRect = tester.getRect(find.byKey(secondKey));
-    predictedHeroRect = pushRectTween.lerp(curve.transform(0.75))!;
+    predictedHeroRect = rectTween.lerp(curve.transform(0.75))!;
     expect(actualHeroRect, within<Rect>(distance: epsilon, from: predictedHeroRect));
 
     await tester.pumpAndSettle();
@@ -1876,26 +1872,22 @@ Future<void> main() async {
     await tester.tap(find.text('pop'));
     await tester.pump(); // begin navigation
 
-    final popRectTween = RectTween(
-      begin: const Rect.fromLTWH(350.0 + leftPadding / 2, 200.0, 100.0, 200.0),
-      end: const Rect.fromLTWH(leftPadding, 0.0, 100.0, 100.0),
-    );
     await tester.pump();
     expect(tester.getCenter(find.byKey(firstKey)), const Offset(400.0 + leftPadding / 2, 300.0));
 
     await tester.pump(duration * 0.25);
     actualHeroRect = tester.getRect(find.byKey(firstKey));
-    predictedHeroRect = popRectTween.lerp(curve.transform(0.25))!;
+    predictedHeroRect = rectTween.lerp(curve.transform(0.75))!;
     expect(actualHeroRect, within<Rect>(distance: epsilon, from: predictedHeroRect));
 
     await tester.pump(duration * 0.25);
     actualHeroRect = tester.getRect(find.byKey(firstKey));
-    predictedHeroRect = popRectTween.lerp(curve.transform(0.5))!;
+    predictedHeroRect = rectTween.lerp(curve.transform(0.5))!;
     expect(actualHeroRect, within<Rect>(distance: epsilon, from: predictedHeroRect));
 
     await tester.pump(duration * 0.25);
     actualHeroRect = tester.getRect(find.byKey(firstKey));
-    predictedHeroRect = popRectTween.lerp(curve.transform(0.75))!;
+    predictedHeroRect = rectTween.lerp(curve.transform(0.25))!;
     expect(actualHeroRect, within<Rect>(distance: epsilon, from: predictedHeroRect));
 
     await tester.pumpAndSettle();
@@ -3353,14 +3345,14 @@ Future<void> main() async {
     final expectedCurveName = expectedCurve.toString();
     const epsilon = 0.001;
     final Animatable<Size?> tween = SizeTween(
-      begin: newSize,
-      end: originalSize,
+      begin: originalSize,
+      end: newSize,
     ).chain(CurveTween(curve: expectedCurve));
 
     // Jump 25% into the transition.
     await tester.pump(duration ~/ 4);
     Size heroSize = tester.getSize(find.byKey(container1));
-    Size expectedSize = tween.transform(0.25)!;
+    Size expectedSize = tween.transform(0.75)!;
     expect(
       heroSize,
       within<Size>(distance: epsilon, from: expectedSize),
@@ -3380,7 +3372,7 @@ Future<void> main() async {
     // Jump to 75% into the transition.
     await tester.pump(duration ~/ 4);
     heroSize = tester.getSize(find.byKey(container1));
-    expectedSize = tween.transform(0.75)!;
+    expectedSize = tween.transform(0.25)!;
     expect(
       heroSize,
       within<Size>(distance: epsilon, from: expectedSize),
@@ -3390,7 +3382,7 @@ Future<void> main() async {
     // Jump to 100% into the transition.
     await tester.pump(duration ~/ 4);
     heroSize = tester.getSize(find.byKey(container1));
-    expectedSize = tween.transform(1.0)!;
+    expectedSize = tween.transform(0)!;
     expect(
       heroSize,
       within<Size>(distance: epsilon, from: expectedSize),
