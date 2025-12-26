@@ -468,27 +468,13 @@ class _HeroFlightManifest {
 
   Object get tag => fromHero.widget.tag;
 
-  CurvedAnimation? _animation;
+  Animation<double>? _animation;
 
   Animation<double> get animation {
-    final Curve curve, reverseCurve;
-    final Animation<double> parent;
-    switch (type) {
-      case HeroFlightDirection.push:
-        parent = toRoute.animation!;
-        curve = toHero.widget.curve;
-        reverseCurve = (toHero.widget.reverseCurve ?? curve).flipped;
-      case HeroFlightDirection.pop:
-        parent = fromRoute.animation!;
-        curve = fromHero.widget.curve;
-        reverseCurve = (fromHero.widget.reverseCurve ?? curve).flipped;
-    }
-
-    return _animation ??= CurvedAnimation(
-      parent: parent,
-      curve: curve,
-      reverseCurve: isDiverted ? null : reverseCurve,
-    );
+    return _animation ??= switch (type) {
+      HeroFlightDirection.push => toRoute.animation!,
+      HeroFlightDirection.pop => fromRoute.animation!,
+    };
   }
 
   Tween<Rect?> createHeroRectTween({required Rect? begin, required Rect? end}) {
@@ -536,7 +522,7 @@ class _HeroFlightManifest {
 
   @mustCallSuper
   void dispose() {
-    _animation?.dispose();
+    // _animation?.dispose();
   }
 }
 
@@ -570,20 +556,28 @@ class _HeroFlight {
 
   // The OverlayEntry WidgetBuilder callback for the hero's overlay.
   Widget _buildOverlay(BuildContext context) {
-    shuttle ??= manifest.shuttleBuilder(
-      context,
-      manifest.animation,
-      manifest.type,
-      manifest.fromHero.context,
-      manifest.toHero.context,
-    );
-    assert(shuttle != null);
-
     return AnimatedBuilder(
       animation: _proxyAnimation,
-      child: shuttle,
+      // child: shuttle,
       builder: (BuildContext context, Widget? child) {
-        final Rect rect = heroRectTween.evaluate(_proxyAnimation)!;
+        final animation = CurvedAnimation(
+          parent: _proxyAnimation,
+          curve: switch (manifest.type) {
+            HeroFlightDirection.push => manifest.toHero.widget.curve,
+            HeroFlightDirection.pop =>
+              manifest.isDiverted
+                  ? manifest.fromHero.widget.curve.flipped
+                  : manifest.fromHero.widget.reverseCurve ?? manifest.fromHero.widget.curve,
+          },
+        );
+        shuttle ??= manifest.shuttleBuilder(
+          context,
+          animation,
+          manifest.type,
+          manifest.fromHero.context,
+          manifest.toHero.context,
+        );
+        final Rect rect = heroRectTween.evaluate(animation)!;
         final offsets = RelativeRect.fromSize(rect, manifest.navigatorSize);
         return Positioned(
           top: offsets.top,
@@ -591,7 +585,7 @@ class _HeroFlight {
           bottom: offsets.bottom,
           left: offsets.left,
           child: IgnorePointer(
-            child: FadeTransition(opacity: _heroOpacity, child: child),
+            child: FadeTransition(opacity: _heroOpacity, child: shuttle),
           ),
         );
       },
@@ -739,6 +733,7 @@ class _HeroFlight {
   // While this flight's hero was in transition a push or a pop occurred for
   // routes with the same hero. Redirect the in-flight hero to the new toRoute.
   void divert(_HeroFlightManifest newManifest) {
+    print('divert ${manifest.tag} to ${newManifest.tag}');
     assert(manifest.tag == newManifest.tag);
     if (manifest.type == HeroFlightDirection.push && newManifest.type == HeroFlightDirection.pop) {
       // A push flight was interrupted by a pop.
@@ -857,6 +852,8 @@ class HeroController extends NavigatorObserver {
     if (previousTopRoute == null) {
       return;
     }
+
+    print('didChangeTop ${previousTopRoute.settings.name} to ${topRoute.settings.name}');
     // Don't trigger another flight when a pop is committed as a user gesture
     // back swipe is snapped.
     if (!navigator!.userGestureInProgress) {
@@ -1097,9 +1094,10 @@ class HeroController extends NavigatorObserver {
       builder: (BuildContext context, Widget? child) {
         return MediaQuery(
           data: toMediaQueryData.copyWith(
-            padding: (flightDirection == HeroFlightDirection.push)
-                ? EdgeInsetsTween(begin: fromHeroPadding, end: toHeroPadding).evaluate(animation)
-                : EdgeInsetsTween(begin: toHeroPadding, end: fromHeroPadding).evaluate(animation),
+            padding: EdgeInsetsTween(
+              begin: fromHeroPadding,
+              end: toHeroPadding,
+            ).evaluate(animation),
           ),
           child: toHero.child,
         );
